@@ -255,7 +255,7 @@ class PointerNetwork(nn.Module):
     
     for t in range(out.size(1)):
       hs, att_w = decoder(dec_in, hs, out)
-      predictions = F.softmax(att_w, dim=1).argmax(1)
+      predictions = F.softmax(att_w, dim=1).argmax(1) # [32, 6] argmax输出[32]
 
       # Pick next index
       # If teacher force the next element will we the ground truth
