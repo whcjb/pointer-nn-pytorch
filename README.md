@@ -189,7 +189,7 @@ class Decoder(nn.Module):
     
     # Get hidden states (not cell states) 
     # from the first and unique LSTM layer 
-    ht = hidden[0][0]  # ht: (BATCH, hidden_size)
+    ht = hidden[0][0]  # [1, 4, 256], hidden[0][0] [256]
 
     # di: Attention aware hidden state -> (BATCH, hidden_size)
     di, att_w = self.attention(encoder_out, ht)
