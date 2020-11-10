@@ -153,7 +153,7 @@ class Attention(nn.Module):
     di_prime = aj * encoder_out # [32, 6, 1] * [32, 6, 256] -> [32, 6, 256]
     di_prime = di_prime.sum(1) # [32, 256]
     
-    return di_prime, uj.squeeze(-1)
+    return di_prime, uj.squeeze(-1) # [32, 6]
 
 # Forward example
 att = Attention(256, 10)
@@ -179,7 +179,7 @@ class Decoder(nn.Module):
                hidden_size: int,
                attention_units: int = 10):
     super(Decoder, self).__init__()
-    self.lstm = nn.LSTM(hidden_size + 1, hidden_size, batch_first=True)
+    self.lstm = nn.LSTM(hidden_size + 1, hidden_size, batch_first=True) # [input 257, 256]
     self.attention = Attention(hidden_size, attention_units)
 
   def forward(self, 
@@ -194,14 +194,16 @@ class Decoder(nn.Module):
     # from the first and unique lstm layer 
     ht = hidden[0][0]  # hidden[0][0] [32, 256] hidden_state
 
-    # di: Attention aware hidden state -> (bs, hidden_size)
+    # di: Attention aware hidden state -> (bs, hidden_size) 
+    # di, [32, 256], att_w, [32, 6]
     di, att_w = self.attention(encoder_out, ht)
     
     # Append attention aware hidden state to our input
-    # x: (bs, 1, 1 + hidden_size)
+    # x: (bs, 1, 1 + hidden_size) # cat([32, 1, 256], [32, 1, 1])输出[32, 1, 257]
     x = torch.cat([di.unsqueeze(1), x], dim=2)
     
     # Generate the hidden state for next timestep
+    # out [32, 1, 256], hidden, tuple ([1, 32, 256], [1, 32, 256])
     _, hidden = self.lstm(x, hidden)
     return hidden, att_w
 ```
