@@ -126,27 +126,27 @@ class Attention(nn.Module):
   def forward(self, 
               encoder_out: torch.Tensor, 
               decoder_hidden: torch.Tensor):
-    # encoder_out: (BATCH, ARRAY_LEN, HIDDEN_SIZE)
-    # decoder_hidden: (BATCH, HIDDEN_SIZE)
+    # encoder_out: (bs, array_len, hidden_size)
+    # decoder_hidden: (bs, hidden_size)
 
     # Add time axis to decoder hidden state
     # in order to make operations compatible with encoder_out
-    # decoder_hidden_time: (BATCH, 1, HIDDEN_SIZE)
+    # decoder_hidden_time: (BATCH, 1, hidden_size)
     decoder_hidden_time = decoder_hidden.unsqueeze(1)
 
-    # uj: (BATCH, ARRAY_LEN, ATTENTION_UNITS)
+    # uj: (BATCH, array_len, ATTENTION_UNITS)
     # Note: we can add the both linear outputs thanks to broadcasting
     uj = self.W1(encoder_out) + self.W2(decoder_hidden_time)
     uj = torch.tanh(uj)
 
-    # uj: (BATCH, ARRAY_LEN, 1)
+    # uj: (BATCH, array_len, 1)
     uj = self.V(uj)
 
     # Attention mask over inputs
-    # aj: (BATCH, ARRAY_LEN, 1)
+    # aj: (BATCH, array_len, 1)
     aj = F.softmax(uj, dim=1)
 
-    # di_prime: (BATCH, HIDDEN_SIZE)
+    # di_prime: (BATCH, hidden_size)
     di_prime = aj * encoder_out
     di_prime = di_prime.sum(1)
     
@@ -184,18 +184,18 @@ class Decoder(nn.Module):
               hidden: Tuple[torch.Tensor], 
               encoder_out: torch.Tensor):
     # x: (BATCH, 1, 1) 
-    # hidden: (1, BATCH, HIDDEN_SIZE)
-    # encoder_out: (BATCH, ARRAY_LEN, HIDDEN_SIZE)
+    # hidden: (1, BATCH, hidden_size)
+    # encoder_out: (BATCH, ARRAY_LEN, hidden_size)
     
     # Get hidden states (not cell states) 
     # from the first and unique LSTM layer 
-    ht = hidden[0][0]  # ht: (BATCH, HIDDEN_SIZE)
+    ht = hidden[0][0]  # ht: (BATCH, hidden_size)
 
-    # di: Attention aware hidden state -> (BATCH, HIDDEN_SIZE)
+    # di: Attention aware hidden state -> (BATCH, hidden_size)
     di, att_w = self.attention(encoder_out, ht)
     
     # Append attention aware hidden state to our input
-    # x: (BATCH, 1, 1 + HIDDEN_SIZE)
+    # x: (BATCH, 1, 1 + hidden_size)
     x = torch.cat([di.unsqueeze(1), x], dim=2)
     
     # Generate the hidden state for next timestep
@@ -233,8 +233,8 @@ class PointerNetwork(nn.Module):
     # encoder_in: (BATCH, ARRAY_LEN, 1)
     encoder_in = x.unsqueeze(-1).type(torch.float)
 
-    # out: (BATCH, ARRAY_LEN, HIDDEN_SIZE)
-    # hs: tuple of (NUM_LAYERS, BATCH, HIDDEN_SIZE)
+    # out: (BATCH, ARRAY_LEN, hidden_size)
+    # hs: tuple of (NUM_LAYERS, BATCH, hidden_size)
     out, hs = encoder(encoder_in)
 
     # Accum loss throughout timesteps
