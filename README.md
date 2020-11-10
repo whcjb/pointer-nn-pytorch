@@ -241,11 +241,11 @@ class PointerNetwork(nn.Module):
     loss = 0
 
     # Save outputs at each timestep
-    # outputs: (ARRAY_LEN, BATCH)
+    # outputs: (array_len, bs)
     outputs = torch.zeros(out.size(1), out.size(0), dtype=torch.long)
     
     # First decoder input is always 0
-    # dec_in: (BATCH, 1, 1)
+    # dec_in: (bs, 1, 1)
     dec_in = torch.zeros(out.size(0), 1, 1, dtype=torch.float)
     
     for t in range(out.size(1)):
@@ -274,17 +274,17 @@ class PointerNetwork(nn.Module):
 Also to make training steps encapsulate the forward and backward steps in a single function called `train`.
 
 ```python
-BATCH_SIZE = 32
-STEPS_PER_EPOCH = 500
-EPOCHS = 10
+batch_size = 32
+steps_per_epoch = 500
+epochs = 10
 
 def train(model, optimizer, epoch):
   """Train single epoch"""
   print('Epoch [{}] -- Train'.format(epoch))
-  for step in range(STEPS_PER_EPOCH):
+  for step in range(steps_per_epoch):
     optimizer.zero_grad()
 
-    x, y = batch(BATCH_SIZE)
+    x, y = batch(batch_size)
     out, loss = model(x, y)
     
     loss.backward()
@@ -297,12 +297,12 @@ def train(model, optimizer, epoch):
 Finally to train the model we run the following code.
 
 ```python
-ptr_net = PointerNetwork(Encoder(HIDDEN_SIZE), 
-                         Decoder(HIDDEN_SIZE))
+ptr_net = PointerNetwork(Encoder(hidden_size), 
+                         Decoder(hidden_size))
 
 optimizer = optim.Adam(ptr_net.parameters())
 
-for epoch in range(EPOCHS):
+for epoch in range(epochs):
   train(ptr_net, optimizer, epoch + 1)
 
 # Output
