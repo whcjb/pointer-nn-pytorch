@@ -183,19 +183,19 @@ class Decoder(nn.Module):
               x: torch.Tensor, 
               hidden: Tuple[torch.Tensor], 
               encoder_out: torch.Tensor):
-    # x: (BATCH, 1, 1) 
-    # hidden: (1, BATCH, hidden_size)
-    # encoder_out: (BATCH, ARRAY_LEN, hidden_size)
+    # x: (bs, 1, 1) 
+    # hidden: (1, bs, hidden_size)
+    # encoder_out: (bs, array_len, hidden_size)
     
     # Get hidden states (not cell states) 
-    # from the first and unique LSTM layer 
+    # from the first and unique lstm layer 
     ht = hidden[0][0]  # [1, 4, 256], hidden[0][0] [256]
 
-    # di: Attention aware hidden state -> (BATCH, hidden_size)
+    # di: Attention aware hidden state -> (bs, hidden_size)
     di, att_w = self.attention(encoder_out, ht)
     
     # Append attention aware hidden state to our input
-    # x: (BATCH, 1, 1 + hidden_size)
+    # x: (bs, 1, 1 + hidden_size)
     x = torch.cat([di.unsqueeze(1), x], dim=2)
     
     # Generate the hidden state for next timestep
@@ -226,15 +226,15 @@ class PointerNetwork(nn.Module):
               x: torch.Tensor, 
               y: torch.Tensor, 
               teacher_force_ratio=.5):
-    # x: (BATCH_SIZE, ARRAY_LEN)
-    # y: (BATCH_SIZE, ARRAY_LEN)
+    # x: (bs, array_le)
+    # y: (bs, array_le)
 
     # Array elements as features
-    # encoder_in: (BATCH, ARRAY_LEN, 1)
+    # encoder_in: (bs, array_le, 1)
     encoder_in = x.unsqueeze(-1).type(torch.float)
 
-    # out: (BATCH, ARRAY_LEN, hidden_size)
-    # hs: tuple of (NUM_LAYERS, BATCH, hidden_size)
+    # out: (bs, array_le, hidden_size)
+    # hs: tuple of (num_layers, bs, hidden_size)
     out, hs = encoder(encoder_in)
 
     # Accum loss throughout timesteps
