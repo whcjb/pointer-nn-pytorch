@@ -261,9 +261,10 @@ class PointerNetwork(nn.Module):
       # If teacher force the next element will we the ground truth
       # otherwise will be the predicted value at current timestep
       teacher_force = random.random() < teacher_force_ratio
-      idx = y[:, t] if teacher_force else predictions
-      dec_in = torch.stack([x[b, idx[b].item()] for b in range(x.size(0))])
-      dec_in = dec_in.view(out.size(0), 1, 1).type(torch.float)
+      idx = y[:, t] if teacher_force else predictions # [32]
+      # x [32, 6], y [32, 6], x[b, idx[b]输出tensor(1), item()用于从tensor中取出设置成标量rd
+      dec_in = torch.stack([x[b, idx[b].item()] for b in range(x.size(0))]) # [32]
+      dec_in = dec_in.view(out.size(0), 1, 1).type(torch.float) # [32, 1, 1]
 
       # Add cross entropy loss (F.log_softmax + nll_loss)
       loss += F.cross_entropy(att_w, y[:, t])
