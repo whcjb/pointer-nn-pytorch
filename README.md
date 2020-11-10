@@ -94,7 +94,7 @@ The paper [1] states that no extensive hyperparameter tuning has been done. So t
 
 As our encoder is a single LSTM layer, we can declare it as a one-liner `nn.Module`.
 
-The encoder input size is 1 because our input sequences are 1-dimensional arrays. Therefore, to make arrays 'compatible' with RNNs, we are going to feed them to our encoder reshaped to size `(BATCH_LEN, ARRAY_LEN, 1)`.
+The encoder input size is 1 because our input sequences are 1-dimensional arrays. Therefore, to make arrays 'compatible' with RNNs, we are going to feed them to our encoder reshaped to size `(bs, array_len, 1)`.
 
 ```python
 encoder = nn.LSTM(1, hidden_size=256, batch_first=True)
@@ -119,36 +119,39 @@ The result of this implementation is an Attention layer, which their outputs are
 class Attention(nn.Module):
   def __init__(self, hidden_size, units):
     super(Attention, self).__init__()
-    self.W1 = nn.Linear(hidden_size, units, bias=False)
-    self.W2 = nn.Linear(hidden_size, units, bias=False)
-    self.V =  nn.Linear(units, 1, bias=False)
+    self.W1 = nn.Linear(hidden_size, units, bias=False) # 256, 10
+    self.W2 = nn.Linear(hidden_size, units, bias=False) # 256, 10
+    self.V =  nn.Linear(units, 1, bias=False) # 10, 1
 
   def forward(self, 
               encoder_out: torch.Tensor, 
               decoder_hidden: torch.Tensor):
-    # encoder_out: (bs, array_len, hidden_size)
-    # decoder_hidden: (bs, hidden_size)
+    # encoder_out: (bs, array_len, hidden_size) [32, 6, 256]
+    # decoder_hidden: (bs, hidden_size) [32, 256]
 
     # Add time axis to decoder hidden state
     # in order to make operations compatible with encoder_out
-    # decoder_hidden_time: (BATCH, 1, hidden_size)
+    # decoder_hidden_time: (bs, 1, hidden_size)
+    # [32, 256] -> [32, 1, 256]
     decoder_hidden_time = decoder_hidden.unsqueeze(1)
 
-    # uj: (BATCH, array_len, ATTENTION_UNITS)
+    # uj: (bs, array_len, attention_uints)
     # Note: we can add the both linear outputs thanks to broadcasting
+    # self.w1(encoder_out) -> [32, 6, 10], self.w1(decoder_hidden_time) -> [32, 1, 10]
+    # a1 + a2 = [32, 6, 10]
     uj = self.W1(encoder_out) + self.W2(decoder_hidden_time)
-    uj = torch.tanh(uj)
+    uj = torch.tanh(uj) # [32, 6, 10]
 
-    # uj: (BATCH, array_len, 1)
+    # uj: (bs, array_len, 1) [32, 6, 1]
     uj = self.V(uj)
 
     # Attention mask over inputs
-    # aj: (BATCH, array_len, 1)
+    # aj: (bs, array_len, 1) [32, 6, 1] 在6个里面norm
     aj = F.softmax(uj, dim=1)
 
-    # di_prime: (BATCH, hidden_size)
-    di_prime = aj * encoder_out
-    di_prime = di_prime.sum(1)
+    # di_prime: (bs, hidden_size)
+    di_prime = aj * encoder_out # [32, 6, 1] * [32, 6, 256] -> [32, 6, 256]
+    di_prime = di_prime.sum(1) # [32, 256]
     
     return di_prime, uj.squeeze(-1)
 
@@ -183,13 +186,13 @@ class Decoder(nn.Module):
               x: torch.Tensor, 
               hidden: Tuple[torch.Tensor], 
               encoder_out: torch.Tensor):
-    # x: (bs, 1, 1) 
-    # hidden: (1, bs, hidden_size)
-    # encoder_out: (bs, array_len, hidden_size)
+    # x: (bs, 1, 1) [32, 1, 1] 
+    # hidden: (1, bs, hidden_size) 是一个tuple包含两个 ([1, 32, 256], [1, 32, 256])
+    # encoder_out: (bs, array_len, hidden_size) [32, 6, 256]
     
     # Get hidden states (not cell states) 
     # from the first and unique lstm layer 
-    ht = hidden[0][0]  # [1, 4, 256], hidden[0][0] [256]
+    ht = hidden[0][0]  # hidden[0][0] [32, 256] hidden_state
 
     # di: Attention aware hidden state -> (bs, hidden_size)
     di, att_w = self.attention(encoder_out, ht)
@@ -226,16 +229,16 @@ class PointerNetwork(nn.Module):
               x: torch.Tensor, 
               y: torch.Tensor, 
               teacher_force_ratio=.5):
-    # x: (bs, array_le)
-    # y: (bs, array_le)
+    # x: (bs, array_len) [32, 6]
+    # y: (bs, array_len) 
 
     # Array elements as features
-    # encoder_in: (bs, array_le, 1)
+    # encoder_in: (bs, array_le, 1) [32, 6, 1]
     encoder_in = x.unsqueeze(-1).type(torch.float)
 
-    # out: (bs, array_le, hidden_size)
-    # hs: tuple of (num_layers, bs, hidden_size)
-    out, hs = encoder(encoder_in)
+    # out: (bs, array_le, hidden_size) [32, 6, 256]
+    # hs: tuple of (num_layers, bs, hidden_size) [1, 32, 256] hs是个tuple，包含hidden state和cell state, 尺寸都是[1, 32, 256]
+    out, hs = encoder(encoder_in) # 只有一个lstm
 
     # Accum loss throughout timesteps
     loss = 0
@@ -245,7 +248,7 @@ class PointerNetwork(nn.Module):
     outputs = torch.zeros(out.size(1), out.size(0), dtype=torch.long)
     
     # First decoder input is always 0
-    # dec_in: (bs, 1, 1)
+    # dec_in: (bs, 1, 1), [32, 1, 1], dec_in就是输入序列x
     dec_in = torch.zeros(out.size(0), 1, 1, dtype=torch.float)
     
     for t in range(out.size(1)):
