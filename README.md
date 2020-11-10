@@ -253,7 +253,7 @@ class PointerNetwork(nn.Module):
     # dec_in: (bs, 1, 1), [32, 1, 1], dec_in就是输入序列x
     dec_in = torch.zeros(out.size(0), 1, 1, dtype=torch.float)
     
-    for t in range(out.size(1)):
+    for t in range(out.size(1)): # 6v
       hs, att_w = decoder(dec_in, hs, out)
       predictions = F.softmax(att_w, dim=1).argmax(1) # [32, 6] argmax输出[32]
 
