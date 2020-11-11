@@ -142,7 +142,7 @@ class Attention(nn.Module):
     uj = self.W1(encoder_out) + self.W2(decoder_hidden_time)
     uj = torch.tanh(uj) # [32, 6, 10]
 
-    # uj: (bs, array_len, 1) [32, 6, 1]
+    # uj: (bs, array_len, 1) [32, 6, 10] * [10, 1] -> [32, 6, 1]
     uj = self.V(uj)
 
     # Attention mask over inputs
