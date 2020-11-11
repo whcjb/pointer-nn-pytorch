@@ -143,16 +143,20 @@ class Attention(nn.Module):
     uj = torch.tanh(uj) # [32, 6, 10]
 
     # uj: (bs, array_len, 1) [32, 6, 10] * [10, 1] -> [32, 6, 1]
+    # 用于最后loss计算[32, 6]
     uj = self.V(uj)
 
     # Attention mask over inputs
     # aj: (bs, array_len, 1) [32, 6, 1] 在6个里面norm
+    # 用作输入权重mask
     aj = F.softmax(uj, dim=1)
 
     # di_prime: (bs, hidden_size)
+    # 添加权重调节的输入
     di_prime = aj * encoder_out # [32, 6, 1] * [32, 6, 256] -> [32, 6, 256]
-    di_prime = di_prime.sum(1) # [32, 256]
     
+    di_prime = di_prime.sum(1) # [32, 256]
+    # di_prime添加权重调节的输入把6个序列融合到一个，后续与每个序列x作cat操作到lstm计算， uj用于loss计算
     return di_prime, uj.squeeze(-1) # [32, 6]
 
 # Forward example
@@ -196,6 +200,7 @@ class Decoder(nn.Module):
 
     # di: Attention aware hidden state -> (bs, hidden_size) 
     # di, [32, 256], att_w, [32, 6]
+    # di添加权重调节的输入encode_in, 把6个序列sum到一块融合起来每次与6个中的一个cat输入到lstm, att_wsoftmax以后用于loss计算
     di, att_w = self.attention(encoder_out, ht)
     
     # Append attention aware hidden state to our input
